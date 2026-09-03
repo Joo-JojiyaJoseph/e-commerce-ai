@@ -1,0 +1,122 @@
+<?php
+
+namespace App\Http\Controllers\Api\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\OrderStatusHistory;
+use App\Models\User;
+use App\Services\NotificationService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Webfolks\CommerceCore\Actions\CancelOrderAction;
+use Webfolks\CommerceCore\Enums\OrderStatus;
+use Webfolks\CommerceCore\Enums\PaymentStatus;
+use Webfolks\CommerceCore\Http\Resources\OrderResource;
+use Webfolks\CommerceCore\Models\Order;
+
+class OrderController extends Controller
+{
+    public function index(Request $request): JsonResponse
+    {
+        $query = Order::query()->with('items')->latest('id');
+
+        if ($search = $request->string('q')->toString()) {
+            $query->where(function ($builder) use ($search): void {
+                $builder->where('number', 'like', '%'.$search.'%');
+            });
+        }
+
+        if ($status = $request->string('status')->toString()) {
+            $query->where('status', $status);
+        }
+
+        if ($payment = $request->string('payment_status')->toString()) {
+            $query->where('payment_status', $payment);
+        }
+
+        return OrderResource::collection($query->paginate(20))->response();
+    }
+
+    public function show(string $order): JsonResponse
+    {
+        $model = Order::query()->with('items')->where('number', $order)->firstOrFail();
+        $customer = $model->user_id ? User::query()->find($model->user_id) : null;
+        $timeline = OrderStatusHistory::query()
+            ->where('order_id', $model->id)
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
+
+        return response()->json([
+            'data' => (new OrderResource($model))->resolve(),
+            'customer' => $customer ? [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'email' => $customer->email,
+            ] : null,
+            'timeline' => $timeline,
+        ]);
+    }
+
+    public function updateStatus(Request $request, string $order, NotificationService $notifications): JsonResponse
+    {
+        $model = Order::query()->where('number', $order)->firstOrFail();
+        $validated = $request->validate([
+            'status' => ['required', Rule::enum(OrderStatus::class)],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $status = $validated['status'] instanceof OrderStatus
+            ? $validated['status']
+            : OrderStatus::from((string) $validated['status']);
+        $model->forceFill(['status' => $status])->save();
+
+        if ($status === OrderStatus::Delivered && $model->payment_gateway === 'cod' && $model->payment_status === PaymentStatus::Pending) {
+            $model->markAsPaid($model->payment_reference, 'cod');
+        }
+
+        OrderStatusHistory::query()->create([
+            'order_id' => $model->id,
+            'status' => $model->status->value,
+            'payment_status' => $model->payment_status->value,
+            'note' => $validated['note'] ?? 'Status updated by admin.',
+            'created_at' => now(),
+        ]);
+
+        $user = $model->user_id ? User::query()->find($model->user_id) : null;
+
+        if ($user) {
+            $notifications->send(
+                $user,
+                'order.'.$model->status->value,
+                'Order '.$model->status->value,
+                "Order {$model->number} is now {$model->status->value}.",
+                '/account/orders/'.$model->number,
+                ['order_id' => $model->id, 'order_number' => $model->number],
+            );
+        }
+
+        return response()->json([
+            'data' => (new OrderResource($model->refresh()->load('items')))->resolve(),
+        ]);
+    }
+
+    public function cancel(string $order, CancelOrderAction $cancelOrder): JsonResponse
+    {
+        $model = Order::query()->where('number', $order)->firstOrFail();
+        $model = $cancelOrder->execute($model);
+
+        OrderStatusHistory::query()->create([
+            'order_id' => $model->id,
+            'status' => $model->status->value,
+            'payment_status' => $model->payment_status->value,
+            'note' => 'Cancelled by admin.',
+            'created_at' => now(),
+        ]);
+
+        return response()->json([
+            'data' => (new OrderResource($model->load('items')))->resolve(),
+        ]);
+    }
+}
