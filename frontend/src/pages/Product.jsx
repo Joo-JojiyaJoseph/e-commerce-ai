@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { createReview, friendlyError, getProduct, getReviews, money } from '../api.js';
 import { Button, ErrorState, Input, Select, Skeleton, Textarea } from '../components/common.jsx';
 import { ProductPrice, ProductRating } from '../components/product/ProductMeta.jsx';
+import ModelViewer from '../components/ModelViewer.jsx';
+import TryOn from '../components/TryOn.jsx';
 import WishlistButton from '../components/product/WishlistButton.jsx';
+import { Icon } from '../components/icons.jsx';
+import { buildCategoryOptions } from '../categoryTree.js';
+import { useCatalog } from '../store/catalog.jsx';
+import { useStorefrontConfig } from '../store/storefrontConfig.js';
 import { useAuth } from '../auth.jsx';
 import { useCart } from '../store/cart.jsx';
 import { useToast } from '../toast.jsx';
@@ -24,6 +30,11 @@ export default function Product() {
     const [reviewErrors, setReviewErrors] = useState({});
     const [activeImage, setActiveImage] = useState(0);
     const [adding, setAdding] = useState(false);
+    const [view, setView] = useState('photos');
+    const [searchParams] = useSearchParams();
+    const wantedView = searchParams.get('view');
+    const { allCategories } = useCatalog();
+    const storeConfig = useStorefrontConfig();
     const [reviewing, setReviewing] = useState(false);
 
     useEffect(() => {
@@ -83,37 +94,97 @@ export default function Product() {
         return <ErrorState title="Product unavailable" body={error} />;
     }
 
+    // Deep links: ?view=ar (from the QR code) or ?view=tryon open straight onto that tab.
+    useEffect(() => {
+        if (!product) return;
+        if (wantedView === 'ar' && product.model_url) setView('3d');
+        else if (wantedView === 'tryon' && product.tryon_url) setView('tryon');
+    }, [product, wantedView]);
+
     if (!product) {
         return <Skeleton className="h-96" />;
     }
+
+    // Breadcrumb follows the product's deepest category up through its parents (e.g. Knitwear / Sweaters).
+    const categoryPath = (() => {
+        const tree = buildCategoryOptions(allCategories);
+        const owned = tree.filter((node) => (product.categories ?? []).some((category) => category.slug === node.slug));
+        const deepest = owned.sort((a, b) => b.depth - a.depth)[0];
+        if (!deepest) return product.categories?.[0] ? [product.categories[0]] : [];
+        const byId = new Map(tree.map((node) => [node.id, node]));
+        const chain = [];
+        for (let node = deepest, guard = 0; node && guard < 10; node = byId.get(node.parent_id), guard += 1) chain.unshift(node);
+        return chain;
+    })();
+
+    const pageUrl = typeof window === 'undefined' ? '' : window.location.href;
+    const shareText = `${product.name} – ${pageUrl}`;
+    const whatsappNumber = storeConfig.whatsapp_number;
+    const has3d = Boolean(product.model_url);
+    const hasTryOn = Boolean(product.tryon_url);
+    const tabs = [['photos', 'Photos', 'photo'], has3d && ['3d', '3D & AR', 'cube3d'], hasTryOn && ['tryon', 'Try on', 'user']].filter(Boolean);
+    const activeView = (view === '3d' && has3d) || (view === 'tryon' && hasTryOn) ? view : 'photos';
+    // The link a phone opens when the QR code is scanned: this product, straight on its 3D & AR view.
+    const arLink = typeof window === 'undefined' ? '' : `${window.location.origin}${window.location.pathname}?view=ar`;
 
     return (
         <div className="space-y-12">
             <nav className="text-sm text-muted">
                 <Link to="/shop">Shop</Link>
-                {product.categories?.[0] && (
-                    <>
+                {categoryPath.map((category) => (
+                    <span key={category.id}>
                         <span> / </span>
-                        <Link to={`/shop?category=${product.categories[0].slug}`}>{product.categories[0].name}</Link>
-                    </>
-                )}
+                        <Link to={`/shop?category=${category.slug}`}>{category.name}</Link>
+                    </span>
+                ))}
                 <span> / {product.name}</span>
             </nav>
             <div className="grid gap-10 lg:grid-cols-2">
                 <div>
-                    <div className="overflow-hidden rounded-2xl bg-[#efe7db] shadow-soft">
+                    {tabs.length > 1 && (
+                        <div className="mb-3 inline-flex rounded-full border border-white/70 bg-white/60 p-1 backdrop-blur" role="tablist" aria-label="Product view">
+                            {tabs.map(([key, label, icon]) => (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={activeView === key}
+                                    onClick={() => setView(key)}
+                                    className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition ${activeView === key ? 'bg-accent text-white shadow-[0_6px_16px_-4px_rgb(109_74_255_/_0.6)]' : 'text-muted hover:text-ink'}`}
+                                >
+                                    <Icon name={icon} className="h-4 w-4" /> {label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    {activeView === '3d' ? (
+                        <ModelViewer
+                            src={product.model_url}
+                            iosSrc={product.model_ios_url}
+                            poster={product.image_url}
+                            alt={`3D model of ${product.name}`}
+                            className="aspect-square"
+                            placement={product.ar_placement}
+                            dimensions={product}
+                            qrUrl={arLink}
+                        />
+                    ) : activeView === 'tryon' ? (
+                        <TryOn garmentUrl={product.tryon_url} type={product.tryon_type ?? 'top'} name={product.name} />
+                    ) : (
+                    <div className="overflow-hidden rounded-3xl border border-white/70 bg-white/50 shadow-soft">
                         {gallery[activeImage]?.url ? (
                             <img src={gallery[activeImage].url} alt={gallery[activeImage].alt_text || product.name} className="aspect-square w-full object-cover" />
                         ) : product.image_url ? (
                             <img src={product.image_url} alt={product.name} className="aspect-square w-full object-cover" />
                         ) : (
-                            <div className="flex aspect-square items-center justify-center font-display text-7xl text-[#d4c8b6]">{product.name.slice(0, 1)}</div>
+                            <div className="flex aspect-square items-center justify-center font-display text-7xl text-accent/30">{product.name.slice(0, 1)}</div>
                         )}
                     </div>
-                    {gallery.length > 1 && (
+                    )}
+                    {gallery.length > 1 && activeView === 'photos' && (
                         <div className="mt-3 flex gap-2 overflow-x-auto">
                             {gallery.map((image, index) => (
-                                <button key={image.id || image.url} type="button" className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border ${activeImage === index ? 'border-ink ring-2 ring-ink/20' : 'border-line'}`} onClick={() => setActiveImage(index)}>
+                                <button key={image.id || image.url} type="button" className={`h-16 w-16 shrink-0 cursor-pointer overflow-hidden rounded-xl border-2 transition ${activeImage === index ? 'border-accent' : 'border-transparent opacity-70 hover:opacity-100'}`} onClick={() => setActiveImage(index)}>
                                     <img src={image.url} alt="" className="h-full w-full object-cover" />
                                 </button>
                             ))}
@@ -150,7 +221,7 @@ export default function Product() {
                             </Select>
                         )}
                         <Input id="qty" label="Quantity" type="number" min={1} max={99} value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} className="max-w-32" />
-                        <div className="sticky bottom-16 z-20 flex flex-col gap-2 bg-canvas/95 py-3 md:static md:flex-row md:bg-transparent">
+                        <div className="sticky bottom-20 z-20 flex flex-col gap-2 py-3 md:static md:flex-row">
                             <Button type="button" disabled={!variant || variant.stock < 1} loading={adding} loadingLabel="Adding to cart…" onClick={() => addToCart().catch(() => {})} className="flex-1 rounded-full">
                                 Add to cart
                             </Button>
@@ -158,6 +229,26 @@ export default function Product() {
                                 Buy now
                             </Button>
                         </div>
+                    </div>
+                    <div className="mt-6 flex flex-wrap items-center gap-2 text-sm">
+                        <a
+                            href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/70 bg-white/60 px-4 py-2 font-medium backdrop-blur transition hover:-translate-y-0.5 hover:bg-white"
+                        >
+                            <Icon name="share" className="h-4 w-4 text-[#128C7E]" /> Share on WhatsApp
+                        </a>
+                        {whatsappNumber && (
+                            <a
+                                href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hi, I have a question about ${product.name} (${pageUrl})`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 font-semibold text-white shadow-[0_8px_20px_-6px_rgb(37_211_102_/_0.7)] transition hover:-translate-y-0.5"
+                            >
+                                <Icon name="chat-bubble" className="h-4 w-4" /> Ask us on WhatsApp
+                            </a>
+                        )}
                     </div>
                     <div className="mt-8 grid gap-2 text-sm text-muted sm:grid-cols-3">
                         <p className="rounded-xl border border-line bg-paper px-3 py-2">Unused items can be cancelled before fulfilment.</p>

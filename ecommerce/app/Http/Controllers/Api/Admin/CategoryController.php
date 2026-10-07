@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Http\Controllers\Concerns\FiltersAdminLists;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use Illuminate\Http\JsonResponse;
@@ -11,9 +12,11 @@ use Illuminate\Validation\Rule;
 
 class CategoryController extends Controller
 {
+    use FiltersAdminLists;
+
     public function index(Request $request): JsonResponse
     {
-        $query = Category::query()->with('parent:id,name,slug');
+        $query = Category::query()->with('parent:id,name,slug')->withCount(['children', 'products']);
 
         if ($request->boolean('trashed')) {
             $query->onlyTrashed();
@@ -23,7 +26,18 @@ class CategoryController extends Controller
             $query->where('name', 'like', '%'.$search.'%');
         }
 
-        return response()->json($query->orderBy('sort_order')->orderBy('id')->paginate(30));
+        if ($request->filled('parent_id')) {
+            $parent = $request->string('parent_id')->toString();
+            $parent === 'root' ? $query->whereNull('parent_id') : $query->where('parent_id', (int) $parent);
+        }
+
+        if ($request->filled('active')) {
+            $query->where('is_active', $request->boolean('active'));
+        }
+
+        $this->applyDateRange($query, $request);
+
+        return response()->json($query->orderBy('sort_order')->orderBy('id')->paginate($this->perPage($request, 30)));
     }
 
     public function show(int $category): JsonResponse
@@ -73,7 +87,15 @@ class CategoryController extends Controller
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('categories', 'slug')->ignore($ignore)],
-            'parent_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'parent_id' => [
+                'nullable', 'integer', 'exists:categories,id',
+                // A category can't be its own parent, or sit under one of its own descendants.
+                function (string $attribute, mixed $value, \Closure $fail) use ($ignore): void {
+                    if ($ignore !== null && in_array((int) $value, Category::descendantIdsOf([$ignore]), true)) {
+                        $fail('A category cannot be placed under itself or one of its own subcategories.');
+                    }
+                },
+            ],
             'image_url' => ['nullable', 'string', 'max:2048'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['required', 'boolean'],

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Http\Controllers\Concerns\FiltersAdminLists;
 use App\Http\Controllers\Controller;
 use App\Models\StoreNotification;
 use Illuminate\Http\JsonResponse;
@@ -9,6 +10,8 @@ use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
+    use FiltersAdminLists;
+
     public function index(Request $request): JsonResponse
     {
         $query = StoreNotification::query()->with('user:id,name,email')->latest('id');
@@ -23,6 +26,8 @@ class NotificationController extends Controller
             });
         }
 
-        return response()->json($query->paginate(30));
+        $this->applyDateRange($query, $request);
+
+        return response()->json($query->paginate($this->perPage($request, 30)));
     }
 }

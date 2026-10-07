@@ -19,6 +19,8 @@ class OrderResource extends JsonResource
         return [
             'id' => $this->id,
             'number' => $this->number,
+            'created_at' => $this->created_at,
+            'customer_email' => $this->resource->getAttribute('customer_email'),
             'status' => $this->status,
             'payment_status' => $this->payment_status,
             'payment_gateway' => $this->payment_gateway,

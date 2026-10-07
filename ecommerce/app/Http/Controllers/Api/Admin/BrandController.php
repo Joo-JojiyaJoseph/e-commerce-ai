@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Http\Controllers\Concerns\FiltersAdminLists;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use Illuminate\Http\JsonResponse;
@@ -11,6 +12,8 @@ use Illuminate\Validation\Rule;
 
 class BrandController extends Controller
 {
+    use FiltersAdminLists;
+
     public function index(Request $request): JsonResponse
     {
         $query = Brand::query();
@@ -23,7 +26,7 @@ class BrandController extends Controller
             $query->where('name', 'like', '%'.$search.'%');
         }
 
-        return response()->json($query->orderBy('name')->paginate(30));
+        return response()->json($query->orderBy('name')->paginate($this->perPage($request, 30)));
     }
 
     public function show(int $brand): JsonResponse

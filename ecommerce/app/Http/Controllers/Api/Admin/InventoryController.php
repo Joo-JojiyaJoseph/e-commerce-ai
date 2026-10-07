@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Http\Controllers\Concerns\FiltersAdminLists;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -9,6 +10,8 @@ use Webfolks\CommerceCore\Models\ProductVariant;
 
 class InventoryController extends Controller
 {
+    use FiltersAdminLists;
+
     public function index(Request $request): JsonResponse
     {
         $query = ProductVariant::query()->with('product:id,name,slug')->latest('id');
@@ -29,7 +32,7 @@ class InventoryController extends Controller
             $query->where('stock', '<=', 0);
         }
 
-        return response()->json($query->paginate(30));
+        return response()->json($query->paginate($this->perPage($request, 30)));
     }
 
     public function adjust(Request $request, ProductVariant $variant): JsonResponse

@@ -1,35 +1,41 @@
-import { useEffect, useState } from 'react';
-import { adminGet, adminSend } from '../api.js';
-import { Button, EmptyState, Input, PageHeader, TableShell, Toggle } from '../components/common.jsx';
+import { useState } from 'react';
+import { adminSend } from '../api.js';
+import { Button, Input, PageHeader, Toggle } from '../components/common.jsx';
 import { useConfirm } from '../feedback.jsx';
 import { useToast } from '../toast.jsx';
+import FilterBar from './kit/FilterBar.jsx';
+import ListBody, { EmptyFiltered } from './kit/ListBody.jsx';
+import Pagination from './kit/Pagination.jsx';
+import { useAdminList } from './kit/useAdminList.js';
+
+const EXPORT_COLUMNS = [
+    { key: 'id', label: 'ID' },
+    { key: 'name', label: 'Name' },
+    { key: 'slug', label: 'Slug' },
+    { key: 'is_active', label: 'Active', value: (row) => (row.is_active ? 'Yes' : 'No') },
+    { key: 'logo_url', label: 'Logo URL' },
+];
+
+const FIELDS = [{ key: 'trashed', label: 'Show deleted only', type: 'toggle' }];
 
 export default function AdminBrands() {
     const confirm = useConfirm();
     const { success, error } = useToast();
-    const [items, setItems] = useState([]);
+    const list = useAdminList('/api/admin/brands', { perPage: 50 });
     const [busyId, setBusyId] = useState(null);
     const [form, setForm] = useState({ name: '', slug: '', logo_url: '', is_active: true });
     const [saving, setSaving] = useState(false);
 
-    function load() {
-        return adminGet('/api/admin/brands').then((response) => setItems(response.data ?? []));
-    }
-
-    useEffect(() => {
-        load();
-    }, []);
-
     async function toggleActive(item) {
         const next = !item.is_active;
         setBusyId(item.id);
-        setItems((current) => current.map((row) => (row.id === item.id ? { ...row, is_active: next } : row)));
+        list.mutateRows((rows) => rows.map((row) => (row.id === item.id ? { ...row, is_active: next } : row)));
         try {
             await adminSend(`/api/admin/brands/${item.id}`, { ...item, is_active: next }, 'PATCH');
             success(next ? 'Brand activated' : 'Brand deactivated');
         } catch (caught) {
             error('Could not update brand', caught.message);
-            load();
+            list.reload();
         } finally {
             setBusyId(null);
         }
@@ -47,7 +53,7 @@ export default function AdminBrands() {
                         await adminSend('/api/admin/brands', form);
                         setForm({ name: '', slug: '', logo_url: '', is_active: true });
                         success('Brand saved');
-                        load();
+                        list.reload();
                     } catch (caught) {
                         error('Could not save brand', caught.message);
                     } finally {
@@ -63,11 +69,12 @@ export default function AdminBrands() {
                     <Button type="submit" loading={saving} loadingLabel="Saving…">Add</Button>
                 </div>
             </form>
-            <TableShell empty={items.length === 0} emptyState={<EmptyState title="No brands" body="Add a brand to group products." icon="building-storefront" />}>
+            <FilterBar list={list} search="Search brands" fields={FIELDS} exportConfig={{ endpoint: '/api/admin/brands', filename: 'brands', columns: EXPORT_COLUMNS }} />
+            <ListBody list={list} empty={<EmptyFiltered list={list} title="No brands" body="Add a brand to group products." icon="building-storefront" />}>
                 <table className="ui-table">
                     <thead><tr><th>Name</th><th>Status</th><th className="text-right">Actions</th></tr></thead>
                     <tbody>
-                        {items.map((item) => (
+                        {list.rows.map((item) => (
                             <tr key={item.id}>
                                 <td className="font-medium">{item.name}</td>
                                 <td>
@@ -81,7 +88,7 @@ export default function AdminBrands() {
                                             const ok = await confirm({ title: 'Delete brand?', message: 'Products keep their data, but this brand will be removed.', confirmLabel: 'Delete' });
                                             if (!ok) return;
                                             await adminSend(`/api/admin/brands/${item.id}`, undefined, 'DELETE');
-                                            load();
+                                            list.reload();
                                             success('Brand deleted');
                                         }}
                                     >
@@ -92,7 +99,8 @@ export default function AdminBrands() {
                         ))}
                     </tbody>
                 </table>
-            </TableShell>
+            </ListBody>
+            <Pagination list={list} />
         </div>
     );
 }

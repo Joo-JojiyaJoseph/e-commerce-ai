@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Http\Controllers\Concerns\FiltersAdminLists;
 use App\Http\Controllers\Controller;
 use App\Models\Review;
 use App\Models\User;
@@ -11,6 +12,8 @@ use Illuminate\Http\Request;
 
 class ReviewController extends Controller
 {
+    use FiltersAdminLists;
+
     public function index(Request $request): JsonResponse
     {
         $query = Review::query()->with(['user:id,name,email', 'product:id,name,slug'])->latest('id');
@@ -25,7 +28,13 @@ class ReviewController extends Controller
             });
         }
 
-        return response()->json($query->paginate(20));
+        if ($request->filled('rating')) {
+            $query->where('rating', $request->integer('rating'));
+        }
+
+        $this->applyDateRange($query, $request);
+
+        return response()->json($query->paginate($this->perPage($request)));
     }
 
     public function show(Review $review): JsonResponse

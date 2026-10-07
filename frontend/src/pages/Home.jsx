@@ -28,7 +28,7 @@ export default function Home() {
     const saleProduct = home?.trending?.[1] ?? home?.new_arrivals?.[2] ?? home?.trending?.[0];
 
     return (
-        <div className="space-y-12 md:space-y-16">
+        <div className="scroll-reveal space-y-12 md:space-y-16">
             <PromoStrip />
             {home ? <HeroSection home={home} categories={categories} /> : <HeroSkeleton />}
             <TrustBanner />
@@ -47,9 +47,9 @@ export default function Home() {
             )}
 
             {brands.length > 0 && (
-                <section className="rounded-3xl border border-line bg-paper p-6 md:p-8">
+                <section className="rounded-[1.75rem] border border-line bg-paper p-6 shadow-soft md:p-8">
                     <div className="mb-5">
-                        <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Makers</p>
+                        <p className="mb-1.5 inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/55 px-2.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-accent-dark backdrop-blur"><span className="h-1.5 w-1.5 rounded-full bg-accent" />Makers</p>
                         <h2 className="font-display text-3xl">Shop by brand</h2>
                     </div>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -60,16 +60,16 @@ export default function Home() {
                                 <Link
                                     key={brand.id}
                                     to={`/shop?brand=${brand.slug}`}
-                                    className="group flex items-center gap-3 rounded-2xl border border-line bg-canvas/40 p-2 pr-4 transition hover:border-ink hover:bg-paper"
+                                    className="hover-lift group flex items-center gap-3 rounded-2xl border border-white/70 bg-white/40 p-2 pr-4 backdrop-blur-xl hover:bg-white/70"
                                 >
                                     {image ? (
                                         <img src={image} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" />
                                     ) : (
-                                        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-canvas font-display text-xl text-muted">
+                                        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-accent/10 font-display text-xl text-accent">
                                             {brand.name?.slice(0, 1) || '?'}
                                         </span>
                                     )}
-                                    <span className="font-medium group-hover:underline">{brand.name}</span>
+                                    <span className="font-semibold transition group-hover:text-accent-dark">{brand.name}</span>
                                 </Link>
                             );
                         })}

@@ -1,38 +1,45 @@
-import { useEffect, useState } from 'react';
-import { adminGet, adminSend } from '../api.js';
-import { Button, EmptyState, Input, PageHeader, Select, TableShell, Toggle } from '../components/common.jsx';
+import { useState } from 'react';
+import { adminSend } from '../api.js';
+import { Badge, Button, Input, PageHeader, Select, Toggle } from '../components/common.jsx';
 import { useToast } from '../toast.jsx';
+import FilterBar from './kit/FilterBar.jsx';
+import ListBody, { EmptyFiltered } from './kit/ListBody.jsx';
+import Pagination from './kit/Pagination.jsx';
+import { useAdminList } from './kit/useAdminList.js';
+
+const FIELDS = [
+    { key: 'type', label: 'Type', type: 'select', options: [{ value: 'percentage', label: 'Percentage' }, { value: 'fixed', label: 'Fixed amount' }] },
+    { key: 'active', label: 'Status', type: 'select', options: [{ value: '1', label: 'Active' }, { value: '0', label: 'Inactive' }] },
+    { key: 'date_from', label: 'Created from', type: 'date' },
+    { key: 'date_to', label: 'Created to', type: 'date' },
+];
+
+const EXPORT_COLUMNS = [
+    { key: 'code', label: 'Code' },
+    { key: 'name', label: 'Name' },
+    { key: 'type', label: 'Type' },
+    { key: 'value', label: 'Value', numeric: true },
+    { key: 'is_active', label: 'Active', value: (row) => (row.is_active ? 'Yes' : 'No') },
+    { key: 'used_count', label: 'Times used', numeric: true },
+];
 
 export default function AdminCoupons() {
     const { success, error } = useToast();
-    const [payload, setPayload] = useState(null);
+    const list = useAdminList('/api/admin/coupons');
     const [busyId, setBusyId] = useState(null);
     const [form, setForm] = useState({ code: '', name: '', type: 'percentage', value: 10, is_active: true });
     const [saving, setSaving] = useState(false);
 
-    function load() {
-        return adminGet('/api/admin/coupons').then(setPayload);
-    }
-
-    useEffect(() => {
-        load();
-    }, []);
-
-    const rows = payload?.data ?? [];
-
     async function toggleActive(coupon) {
         const next = !coupon.is_active;
         setBusyId(coupon.id);
-        setPayload((current) => ({
-            ...current,
-            data: (current?.data ?? []).map((row) => (row.id === coupon.id ? { ...row, is_active: next } : row)),
-        }));
+        list.mutateRows((rows) => rows.map((row) => (row.id === coupon.id ? { ...row, is_active: next } : row)));
         try {
             await adminSend(`/api/admin/coupons/${coupon.id}`, { ...coupon, is_active: next }, 'PATCH');
             success(next ? 'Coupon activated' : 'Coupon deactivated');
         } catch (caught) {
             error('Could not update coupon', caught.message);
-            load();
+            list.reload();
         } finally {
             setBusyId(null);
         }
@@ -50,7 +57,7 @@ export default function AdminCoupons() {
                         await adminSend('/api/admin/coupons', form);
                         setForm({ code: '', name: '', type: 'percentage', value: 10, is_active: true });
                         success('Coupon saved');
-                        load();
+                        list.reload();
                     } catch (caught) {
                         error('Could not save coupon', caught.message);
                     } finally {
@@ -70,17 +77,18 @@ export default function AdminCoupons() {
                     <Button type="submit" loading={saving} loadingLabel="Saving…">Add</Button>
                 </div>
             </form>
-            <TableShell empty={Boolean(payload) && rows.length === 0} emptyState={<EmptyState title="No coupons" body="Add WELCOME10 or another code to start." icon="sparkles" />}>
+            <FilterBar list={list} search="Search code or name" fields={FIELDS} exportConfig={{ endpoint: '/api/admin/coupons', filename: 'coupons', columns: EXPORT_COLUMNS }} />
+            <ListBody list={list} empty={<EmptyFiltered list={list} title="No coupons" body="Add WELCOME10 or another code to start." icon="sparkles" />}>
                 <table className="ui-table">
                     <thead><tr><th>Code</th><th>Value</th><th>Status</th></tr></thead>
                     <tbody>
-                        {rows.map((coupon) => (
+                        {list.rows.map((coupon) => (
                             <tr key={coupon.id}>
                                 <td>
                                     <p className="font-medium">{coupon.code}</p>
                                     <p className="text-xs text-muted">{coupon.name}</p>
                                 </td>
-                                <td>{coupon.value}{coupon.type === 'percentage' ? '%' : ''} ({coupon.type})</td>
+                                <td><Badge tone="accent">{coupon.type === 'percentage' ? `${Number(coupon.value)}% off` : `${Number(coupon.value)} off`}</Badge></td>
                                 <td>
                                     <Toggle checked={coupon.is_active} disabled={busyId === coupon.id} onChange={() => toggleActive(coupon)} />
                                 </td>
@@ -88,7 +96,8 @@ export default function AdminCoupons() {
                         ))}
                     </tbody>
                 </table>
-            </TableShell>
+            </ListBody>
+            <Pagination list={list} />
         </div>
     );
 }

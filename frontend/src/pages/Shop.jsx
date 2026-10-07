@@ -8,7 +8,7 @@ import { useCatalog } from '../store/catalog.jsx';
 
 export default function Shop() {
     const [params, setParams] = useSearchParams();
-    const { categories, brands } = useCatalog();
+    const { allCategories: categories, brands } = useCatalog();
     const [products, setProducts] = useState([]);
     const [meta, setMeta] = useState(null);
     const [error, setError] = useState(null);

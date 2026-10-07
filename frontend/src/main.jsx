@@ -6,6 +6,7 @@ import AdminCategories from './admin/AdminCategories.jsx';
 import AdminCoupons from './admin/AdminCoupons.jsx';
 import { AdminCustomerView, AdminCustomers } from './admin/AdminCustomers.jsx';
 import AdminDashboard from './admin/AdminDashboard.jsx';
+import AdminIntegrations from './admin/AdminIntegrations.jsx';
 import AdminInventory from './admin/AdminInventory.jsx';
 import AdminLayout from './admin/AdminLayout.jsx';
 import AdminLogin from './admin/AdminLogin.jsx';
@@ -82,6 +83,7 @@ createRoot(root).render(
                                             <Route path="customers/:id" element={<AdminCustomerView />} />
                                             <Route path="coupons" element={<AdminCoupons />} />
                                             <Route path="notifications" element={<AdminNotifications />} />
+                                            <Route path="integrations" element={<AdminIntegrations />} />
                                         </Route>
                                         <Route element={<Layout />}>
                                             <Route path="/" element={<Home />} />

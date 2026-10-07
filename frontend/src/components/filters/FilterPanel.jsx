@@ -1,3 +1,4 @@
+import { buildCategoryOptions } from '../../categoryTree.js';
 import { Button, Select } from '../common.jsx';
 
 export const FILTER_KEYS = ['q', 'category', 'brand', 'min_price', 'max_price', 'in_stock', 'rating', 'on_sale', 'sort', 'page'];
@@ -22,8 +23,8 @@ export function FilterPanel({ filters, categories, brands, onChange, onClear, on
         <div className="space-y-5">
             <Select label="Category" value={filters.category} onChange={(event) => onChange('category', event.target.value)}>
                 <option value="">All categories</option>
-                {categories.map((category) => (
-                    <option key={category.id} value={category.slug}>{category.name}</option>
+                {buildCategoryOptions(categories).map((category) => (
+                    <option key={category.id} value={category.slug}>{`${'\u2003'.repeat(category.depth)}${category.depth ? '↳ ' : ''}${category.name}`}</option>
                 ))}
             </Select>
             <Select label="Brand" value={filters.brand} onChange={(event) => onChange('brand', event.target.value)}>

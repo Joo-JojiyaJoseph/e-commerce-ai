@@ -7,11 +7,13 @@ use App\Http\Controllers\Api\Admin\CategoryController as AdminCategoryController
 use App\Http\Controllers\Api\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Api\Admin\DiscountController as AdminDiscountController;
+use App\Http\Controllers\Api\Admin\IntegrationController as AdminIntegrationController;
 use App\Http\Controllers\Api\Admin\InventoryController as AdminInventoryController;
 use App\Http\Controllers\Api\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Api\Admin\ReviewController as AdminReviewController;
+use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\ContactController;
@@ -46,6 +48,8 @@ Route::prefix('commerce')->group(function (): void {
     Route::get('categories', [CatalogController::class, 'categories']);
     Route::get('brands', [CatalogController::class, 'brands']);
     Route::get('payments/methods', [PaymentController::class, 'methods']);
+    Route::post('assistant', AssistantController::class)->middleware('throttle:30,1');
+    Route::get('storefront-config', [CatalogController::class, 'storefrontConfig']);
     Route::post('payments/confirm', [PaymentController::class, 'confirm'])->middleware('throttle:auth');
     Route::post('payments/webhooks/stripe', [PaymentWebhookController::class, 'stripe']);
     Route::post('payments/webhooks/razorpay', [PaymentWebhookController::class, 'razorpay']);
@@ -84,6 +88,7 @@ Route::middleware('auth:sanctum')->prefix('notifications')->group(function (): v
 
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function (): void {
     Route::get('dashboard', [AdminDashboardController::class, 'show']);
+    Route::get('integrations', [AdminIntegrationController::class, 'index']);
 
     Route::get('products', [AdminProductController::class, 'index']);
     Route::post('products', [AdminProductController::class, 'store']);
@@ -119,6 +124,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('orders/{order}', [AdminOrderController::class, 'show']);
     Route::patch('orders/{order}/status', [AdminOrderController::class, 'updateStatus']);
     Route::post('orders/{order}/cancel', [AdminOrderController::class, 'cancel']);
+    Route::get('orders/{order}/whatsapp', [AdminOrderController::class, 'whatsapp']);
+    Route::post('orders/{order}/whatsapp', [AdminOrderController::class, 'sendWhatsapp']);
 
     Route::get('customers', [AdminCustomerController::class, 'index']);
     Route::get('customers/{customer}', [AdminCustomerController::class, 'show']);

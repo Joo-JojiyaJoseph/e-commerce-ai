@@ -20,6 +20,8 @@ class CategoryCardResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'slug' => $this->slug,
+            'parent_id' => $this->parent_id,
+            'children' => $this->getAttribute('children') ?? [],
             'image_url' => $this->image_url,
             'products_count' => (int) ($this->products_count ?? 0),
         ];

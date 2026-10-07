@@ -11,6 +11,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\RecentlyViewedProduct;
 use App\Repositories\CatalogRepository;
+use App\Services\WhatsAppService;
 use App\Support\DemoCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -76,6 +77,15 @@ class CatalogController extends Controller
         ]);
     }
 
+    public function storefrontConfig(WhatsAppService $whatsapp): JsonResponse
+    {
+        return response()->json(['data' => [
+            'whatsapp_number' => $whatsapp->normalizePhone(config('services.whatsapp.business_number')),
+            'assistant' => true,
+            'currency' => config('commerce.currency'),
+        ]]);
+    }
+
     public function brands(): JsonResponse
     {
         return response()->json([
@@ -119,9 +129,28 @@ class CatalogController extends Controller
             $categories = Category::query()
                 ->active()
                 ->withCount(['products as products_count' => fn ($query) => $query->where('products.status', ProductStatus::Active)])
-                ->get(['id', 'name', 'slug', 'image_url']);
+                ->get(['id', 'parent_id', 'name', 'slug', 'image_url']);
+
+            $children = $categories->groupBy('parent_id');
 
             foreach ($categories as $category) {
+                $subIds = Category::descendantIdsOf([$category->id]);
+
+                if (count($subIds) > 1) {
+                    $category->setAttribute('products_count', Product::query()
+                        ->where('status', ProductStatus::Active)
+                        ->whereHas('categories', fn ($query) => $query->whereIn('categories.id', $subIds))
+                        ->count());
+                }
+
+                $category->setAttribute('children', ($children->get($category->id) ?? collect())
+                    ->map(fn (Category $child) => [
+                        'id' => $child->id,
+                        'name' => $child->name,
+                        'slug' => $child->slug,
+                        'products_count' => (int) ($child->products_count ?? 0),
+                    ])->values()->all());
+
                 $image = DemoCatalog::categoryImage($category->slug, $category->image_url);
 
                 if (blank($image)) {

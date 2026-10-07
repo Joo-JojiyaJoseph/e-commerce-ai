@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Support\ProductExperience;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -41,6 +42,7 @@ class ProductDetailResource extends JsonResource
                 'name' => $category->name,
                 'slug' => $category->slug,
             ])->values(),
+            ...ProductExperience::fromMeta($this->meta),
             'rating_avg' => round((float) ($this->rating_avg ?? 0), 1),
             'review_count' => (int) ($this->reviews_count ?? 0),
             'variants' => $this->variants->map(fn ($variant) => [

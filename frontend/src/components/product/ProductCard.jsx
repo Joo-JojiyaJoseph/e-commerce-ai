@@ -69,8 +69,8 @@ export default function ProductCard({ product, index = 0 }) {
             className="product-card-enter h-full"
             style={{ animationDelay: `${Math.min(index, 10) * 55}ms` }}
         >
-            <article className="product-card group flex h-full flex-col overflow-hidden rounded-2xl border border-line/80 bg-paper">
-                <div className="relative aspect-[4/5] overflow-hidden bg-[#efe7db]">
+            <article className="product-card group flex h-full flex-col overflow-hidden rounded-3xl bg-paper p-1.5">
+                <div className="relative aspect-[4/5] overflow-hidden rounded-[1.25rem] bg-white/50">
                     <Link to={`/products/${product.slug}`} className="block h-full" aria-label={product.name}>
                         {product.image_url ? (
                             <>
@@ -90,7 +90,7 @@ export default function ProductCard({ product, index = 0 }) {
                                 )}
                             </>
                         ) : (
-                            <div className="flex h-full items-center justify-center font-display text-5xl text-[#d4c8b6]">
+                            <div className="flex h-full items-center justify-center font-display text-5xl text-accent/30">
                                 {product.name.slice(0, 1)}
                             </div>
                         )}
@@ -98,23 +98,23 @@ export default function ProductCard({ product, index = 0 }) {
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-ink/35 to-transparent opacity-80 transition duration-300 group-hover:opacity-100" />
 
                     {discount > 0 && product.in_stock && (
-                        <span className="absolute left-3 top-3 rounded-full bg-accent px-2.5 py-1 text-[11px] font-medium text-white shadow-soft">
+                        <span className="absolute left-3 top-3 rounded-full bg-accent px-2.5 py-1 text-[11px] font-semibold text-white shadow-[0_8px_18px_-4px_rgb(109_74_255_/_0.7)]">
                             {discount}% off
                         </span>
                     )}
                     {!product.in_stock && (
-                        <span className="absolute left-3 top-3 rounded-full bg-paper/95 px-2.5 py-1 text-[11px] font-medium text-muted shadow-soft">
+                        <span className="absolute left-3 top-3 rounded-full border border-white/70 bg-paper/80 px-2.5 py-1 text-[11px] font-medium text-muted shadow-soft">
                             Out of stock
                         </span>
                     )}
-                    <WishlistButton product={product} className="absolute right-3 top-3 h-10 w-10 bg-paper/80 backdrop-blur-sm" />
+                    <WishlistButton product={product} className="absolute right-3 top-3 h-10 w-10 border border-white/70 bg-paper/70 backdrop-blur-xl" />
 
                     <div className="product-card-actions absolute inset-x-3 bottom-3 z-10 flex gap-2">
                         <button
                             type="button"
                             onClick={onAdd}
                             disabled={busy}
-                            className="flex-1 rounded-full bg-paper/95 px-3 py-2 text-xs font-medium text-ink shadow-soft backdrop-blur-sm transition hover:bg-white disabled:opacity-50"
+                            className="flex-1 rounded-full border border-white/70 bg-paper/80 px-3 py-2.5 text-xs font-semibold text-ink shadow-soft backdrop-blur-xl transition duration-300 hover:bg-white active:scale-95 disabled:opacity-50"
                         >
                             {busy && !added ? 'Adding…' : added ? 'Added' : product.in_stock ? 'Add to bag' : 'View'}
                         </button>
@@ -123,7 +123,7 @@ export default function ProductCard({ product, index = 0 }) {
                                 type="button"
                                 onClick={onBuyNow}
                                 disabled={busy}
-                                className="rounded-full bg-ink px-3 py-2 text-xs font-medium text-white shadow-soft transition hover:bg-black disabled:opacity-50"
+                                className="rounded-full bg-ink px-3.5 py-2.5 text-xs font-semibold text-white shadow-soft transition duration-300 hover:bg-accent active:scale-95 disabled:opacity-50"
                             >
                                 Buy now
                             </button>
@@ -131,7 +131,7 @@ export default function ProductCard({ product, index = 0 }) {
                     </div>
                 </div>
 
-                <Link to={`/products/${product.slug}`} className="flex flex-1 flex-col gap-1.5 p-3.5">
+                <Link to={`/products/${product.slug}`} className="flex flex-1 flex-col gap-1.5 p-3">
                     {product.brand && (
                         <p className="text-[11px] uppercase tracking-[0.14em] text-muted">{product.brand}</p>
                     )}
@@ -150,8 +150,8 @@ export default function ProductCard({ product, index = 0 }) {
 
 export function ProductCardSkeleton() {
     return (
-        <div className="overflow-hidden rounded-2xl border border-line bg-paper">
-            <Skeleton className="aspect-[4/5] rounded-none" />
+        <div className="overflow-hidden rounded-3xl border border-line bg-paper p-1.5">
+            <Skeleton className="aspect-[4/5] rounded-[1.25rem]" />
             <div className="space-y-2 p-3.5">
                 <Skeleton className="h-3 w-16" />
                 <Skeleton className="h-4 w-3/4" />
@@ -183,7 +183,7 @@ export function ProductRail({ title, subtitle, products, href = '/shop' }) {
                     <h2 className="font-display text-3xl md:text-4xl">{title}</h2>
                     {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
                 </div>
-                <Link to={href} className="inline-flex items-center gap-1 text-sm font-medium transition-[gap] duration-200 hover:gap-2">
+                <Link to={href} className="inline-flex items-center gap-1 rounded-full border border-white/70 bg-white/55 px-4 py-2 text-sm font-medium backdrop-blur transition-all duration-300 hover:gap-2 hover:bg-white/80">
                     View all
                     <Icon name="arrow-right" className="h-4 w-4" />
                 </Link>

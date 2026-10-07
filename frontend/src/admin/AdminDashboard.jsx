@@ -37,13 +37,14 @@ export default function AdminDashboard() {
     return (
         <div className="space-y-6">
             <PageHeader eyebrow="Overview" title="Dashboard" subtitle="What needs attention in the store today." />
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="scroll-reveal grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {cards.map(([label, value, to, icon]) => (
-                    <Link key={label} to={to} className="cursor-pointer rounded-2xl border border-line bg-paper p-5 transition hover:-translate-y-0.5 hover:border-ink/30 hover:shadow-soft">
-                        <p className="flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-muted">
-                            <Icon name={icon} className="h-4 w-4" /> {label}
+                    <Link key={label} to={to} className="hover-lift group relative cursor-pointer overflow-hidden rounded-3xl border border-line bg-paper p-5 shadow-soft">
+                        <span className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-accent/15 blur-2xl transition duration-500 group-hover:scale-150" />
+                        <p className="relative flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-muted">
+                            <span className="grid h-9 w-9 place-items-center rounded-xl bg-accent/10 text-accent ring-1 ring-white/70 transition duration-300 group-hover:bg-accent group-hover:text-white"><Icon name={icon} className="h-4 w-4" /></span> {label}
                         </p>
-                        <p className="mt-2 font-display text-3xl">{value}</p>
+                        <p className="relative mt-4 font-display text-4xl font-extrabold tracking-tight">{value}</p>
                     </Link>
                 ))}
             </div>

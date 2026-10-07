@@ -64,11 +64,11 @@ export default function Login() {
     }
 
     return (
-        <div className="grid overflow-hidden rounded-3xl border border-line bg-paper shadow-soft lg:grid-cols-2">
+        <div className="grid overflow-hidden rounded-[2rem] border border-line bg-paper shadow-[0_1px_0_rgb(255_255_255_/_0.9)_inset,0_40px_90px_-24px_rgb(76_56_180_/_0.4)] lg:grid-cols-2">
             <form noValidate onSubmit={onSubmit} className="flex flex-col justify-center space-y-5 p-6 sm:p-10 lg:p-12">
                 <div>
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Welcome back</p>
-                    <h1 className="mt-1 font-display text-4xl leading-tight">Sign in to Webfolks</h1>
+                    <p className="inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/55 px-2.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-accent-dark backdrop-blur"><span className="h-1.5 w-1.5 rounded-full bg-accent" />Welcome back</p>
+                    <h1 className="mt-3 font-display text-4xl font-extrabold leading-tight">Sign in to <span className="text-gradient inline-block pr-[0.06em]">Webfolks</span></h1>
                     <p className="mt-2 text-sm leading-6 text-muted">
                         {checkoutNext
                             ? 'Sign in to use a saved address and finish this order.'
@@ -126,7 +126,7 @@ export default function Login() {
                     <Link to="/shop" className="cursor-pointer text-muted hover:text-ink">Continue shopping</Link>
                 </div>
 
-                <Button type="submit" loading={loading} loadingLabel="Signing in…" className="w-full rounded-full">
+                <Button type="submit" loading={loading} loadingLabel="Signing in…" className="w-full rounded-xl py-3" variant="accent">
                     <Icon name="arrow-right-on-rectangle" className="h-4 w-4" /> Sign in
                 </Button>
 
@@ -141,12 +141,14 @@ export default function Login() {
                     <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover" />
                 ) : null}
                 <div className="absolute inset-0 bg-gradient-to-t from-forest via-forest/70 to-forest/20" />
+                <div className="orb float-slow -left-10 top-10 h-64 w-64 bg-accent/60" />
+                <div className="orb float-slower bottom-10 right-0 h-56 w-56 bg-fuchsia-500/40" />
                 <div className="relative flex h-full flex-col justify-end gap-6 p-10">
                     <p className="font-display text-3xl leading-tight">A quieter store for linen, knitwear, and everyday bags.</p>
                     <ul className="space-y-3 text-sm text-white/80">
                         {PERKS.map(([icon, title, body]) => (
                             <li key={title} className="flex gap-3">
-                                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/10">
+                                <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/20 bg-white/10 backdrop-blur-xl">
                                     <Icon name={icon} className="h-4 w-4" />
                                 </span>
                                 <span>

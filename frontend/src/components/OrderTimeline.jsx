@@ -1,4 +1,4 @@
-const STEPS = [
+export const TIMELINE_STEPS = [
     { key: 'placed', label: 'Order placed' },
     { key: 'paid', label: 'Payment confirmed' },
     { key: 'processing', label: 'Processing' },
@@ -8,7 +8,7 @@ const STEPS = [
     { key: 'delivered', label: 'Delivered' },
 ];
 
-function currentIndex(status, paymentStatus) {
+export function timelineIndex(status, paymentStatus) {
     const byStatus = {
         pending: 0,
         confirmed: 0,
@@ -41,21 +41,36 @@ function currentIndex(status, paymentStatus) {
 }
 
 export default function OrderTimeline({ status, paymentStatus, events = [] }) {
-    const active = currentIndex(status, paymentStatus);
+    const active = timelineIndex(status, paymentStatus);
+    const stopped = status === 'cancelled' || status === 'failed';
 
     return (
-        <ol className="mt-6 space-y-3">
-            {STEPS.map((step, index) => (
-                <li key={step.key} className="flex gap-3 text-sm">
-                    <span className={`mt-1 h-2.5 w-2.5 rounded-full ${index <= active ? 'bg-clay' : 'bg-line'}`} />
-                    <div>
-                        <p className={index <= active ? 'font-medium' : 'text-muted'}>{step.label}</p>
-                        {events[index] && <p className="text-xs text-muted">{events[index].note}</p>}
-                    </div>
-                </li>
-            ))}
+        <ol className="mt-6">
+            {TIMELINE_STEPS.map((step, index) => {
+                const done = !stopped && index <= active;
+                const current = !stopped && index === active;
+
+                return (
+                    <li key={step.key} className="relative flex gap-3 pb-5 text-sm last:pb-0">
+                        {index < TIMELINE_STEPS.length - 1 && (
+                            <span className={`absolute left-[7px] top-4 h-full w-0.5 ${!stopped && index < active ? 'bg-accent' : 'bg-slate-900/10'}`} aria-hidden="true" />
+                        )}
+                        <span
+                            className={`relative mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full ring-4 ring-white/60 ${done ? 'bg-accent' : 'bg-slate-300'} ${current ? 'shadow-[0_0_0_4px_rgb(109_74_255_/_0.25)]' : ''}`}
+                        >
+                            {done && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                        </span>
+                        <div>
+                            <p className={done ? 'font-semibold' : 'text-muted'}>{step.label}</p>
+                            {events[index] && <p className="text-xs text-muted">{events[index].note}</p>}
+                        </div>
+                    </li>
+                );
+            })}
             {(status === 'cancelled' || paymentStatus === 'refunded') && (
-                <li className="text-sm text-red-700">This order was cancelled. Refund status: {paymentStatus}.</li>
+                <li className="mt-4 rounded-xl border border-red-200 bg-red-50/70 px-3 py-2 text-sm text-red-700">
+                    This order was cancelled. Refund status: {paymentStatus}.
+                </li>
             )}
         </ol>
     );

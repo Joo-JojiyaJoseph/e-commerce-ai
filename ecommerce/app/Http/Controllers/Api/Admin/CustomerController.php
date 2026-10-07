@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Http\Controllers\Concerns\FiltersAdminLists;
 use App\Http\Controllers\Controller;
 use App\Models\Review;
 use App\Models\User;
@@ -12,6 +13,8 @@ use Webfolks\CommerceCore\Models\Order;
 
 class CustomerController extends Controller
 {
+    use FiltersAdminLists;
+
     public function index(Request $request): JsonResponse
     {
         $query = User::query()->latest('id');
@@ -23,7 +26,9 @@ class CustomerController extends Controller
             });
         }
 
-        return response()->json($query->paginate(20));
+        $this->applyDateRange($query, $request);
+
+        return response()->json($query->paginate($this->perPage($request)));
     }
 
     public function show(User $customer): JsonResponse

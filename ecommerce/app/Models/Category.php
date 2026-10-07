@@ -52,6 +52,26 @@ class Category extends Model
     }
 
     /**
+     * The given ids plus every nested subcategory id (cycle-safe).
+     *
+     * @param  array<int, int>  $ids
+     * @return array<int, int>
+     */
+    public static function descendantIdsOf(array $ids): array
+    {
+        $all = array_values(array_unique(array_map('intval', $ids)));
+        $frontier = $all;
+
+        while ($frontier !== []) {
+            $children = static::query()->whereIn('parent_id', $frontier)->pluck('id')->map(fn ($id) => (int) $id)->all();
+            $frontier = array_values(array_diff($children, $all));
+            $all = array_merge($all, $frontier);
+        }
+
+        return $all;
+    }
+
+    /**
      * @param  Builder<Category>  $query
      * @return Builder<Category>
      */

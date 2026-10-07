@@ -118,7 +118,9 @@ class CatalogRepository
             return;
         }
 
-        $query->whereHas('categories', fn (Builder $categories) => $categories->where('slug', $category));
+        $ids = Category::descendantIdsOf(Category::query()->where('slug', $category)->pluck('id')->all());
+
+        $query->whereHas('categories', fn (Builder $categories) => $categories->whereIn('categories.id', $ids));
     }
 
     /**

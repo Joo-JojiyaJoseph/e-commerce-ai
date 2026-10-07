@@ -105,15 +105,25 @@ export function ShopMenu() {
                     ) : (
                         <div className={mega ? 'grid grid-cols-2 gap-1' : 'space-y-1'}>
                             {categories.map((category) => (
-                                <Link
-                                    key={category.id}
-                                    to={`/shop?category=${category.slug}`}
-                                    className="flex items-center gap-3 rounded-lg p-2 text-sm hover:bg-canvas"
-                                    onClick={() => setOpen(false)}
-                                >
-                                    <CategoryThumb category={category} />
-                                    <span className="font-medium">{category.name}</span>
-                                </Link>
+                                <div key={category.id} className="rounded-xl p-1 transition hover:bg-white/60">
+                                    <Link
+                                        to={`/shop?category=${category.slug}`}
+                                        className="flex items-center gap-3 rounded-lg p-1.5 text-sm"
+                                        onClick={() => setOpen(false)}
+                                    >
+                                        <CategoryThumb category={category} />
+                                        <span className="font-medium">{category.name}</span>
+                                    </Link>
+                                    {(category.children ?? []).length > 0 && (
+                                        <ul className="mb-1 ml-[3.25rem] flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
+                                            {category.children.slice(0, 5).map((child) => (
+                                                <li key={child.id}>
+                                                    <Link to={`/shop?category=${child.slug}`} className="transition hover:text-accent-dark hover:underline" onClick={() => setOpen(false)}>{child.name}</Link>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
                             ))}
                         </div>
                     )}

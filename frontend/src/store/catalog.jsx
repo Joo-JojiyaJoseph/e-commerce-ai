@@ -5,7 +5,7 @@ const CatalogContext = createContext(null);
 let homePromise = null;
 
 export function CatalogProvider({ children }) {
-    const [categories, setCategories] = useState([]);
+    const [allCategories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
     const [home, setHome] = useState(null);
 
@@ -44,9 +44,16 @@ export function CatalogProvider({ children }) {
         loadHome().catch(() => {});
     }, [loadHome]);
 
+    // `categories` is the top level only (each carries its nested `children`); `allCategories` is every
+    // active category, for filters and breadcrumbs. A child whose parent is hidden is promoted to top level.
+    const categories = useMemo(() => {
+        const ids = new Set(allCategories.map((category) => category.id));
+        return allCategories.filter((category) => !category.parent_id || !ids.has(category.parent_id));
+    }, [allCategories]);
+
     const value = useMemo(
-        () => ({ categories, brands, home, loadHome, setHome }),
-        [categories, brands, home, loadHome],
+        () => ({ categories, allCategories, brands, home, loadHome, setHome }),
+        [categories, allCategories, brands, home, loadHome],
     );
 
     return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;

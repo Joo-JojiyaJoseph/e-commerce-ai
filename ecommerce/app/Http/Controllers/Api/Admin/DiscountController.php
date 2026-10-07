@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Http\Controllers\Concerns\FiltersAdminLists;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,6 +12,8 @@ use Webfolks\CommerceCore\Models\Discount;
 
 class DiscountController extends Controller
 {
+    use FiltersAdminLists;
+
     public function index(Request $request): JsonResponse
     {
         $query = Discount::query()->latest('id');
@@ -21,7 +24,17 @@ class DiscountController extends Controller
             });
         }
 
-        return response()->json($query->paginate(20));
+        if ($request->filled('type')) {
+            $query->where('type', $request->string('type')->toString());
+        }
+
+        if ($request->filled('active')) {
+            $query->where('is_active', $request->boolean('active'));
+        }
+
+        $this->applyDateRange($query, $request);
+
+        return response()->json($query->paginate($this->perPage($request)));
     }
 
     public function show(Discount $discount): JsonResponse

@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Http\Controllers\Concerns\FiltersAdminLists;
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Services\ProductImageService;
+use App\Support\ProductExperience;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -16,6 +19,8 @@ use Webfolks\CommerceCore\Models\ProductVariant;
 
 class ProductController extends Controller
 {
+    use FiltersAdminLists;
+
     public function __construct(protected ProductImageService $images) {}
 
     public function index(Request $request): JsonResponse
@@ -37,14 +42,36 @@ class ProductController extends Controller
             $query->where('status', $status);
         }
 
+        if ($request->filled('brand_id')) {
+            $query->where('brand_id', $request->integer('brand_id'));
+        }
+
+        if ($request->filled('category_id')) {
+            // Filtering by a parent category also matches products in its subcategories.
+            $ids = Category::descendantIdsOf([$request->integer('category_id')]);
+            $query->whereHas('categories', fn ($categories) => $categories->whereIn('categories.id', $ids));
+        }
+
+        if ($stock = $request->string('stock')->toString()) {
+            match ($stock) {
+                'out' => $query->whereDoesntHave('variants', fn ($variants) => $variants->where('stock', '>', 0)),
+                'low' => $query->whereHas('variants', fn ($variants) => $variants->where('stock', '>', 0)->where('stock', '<=', 5)),
+                'in' => $query->whereHas('variants', fn ($variants) => $variants->where('stock', '>', 0)),
+                default => null,
+            };
+        }
+
+        $this->applyDateRange($query, $request);
+
         $sort = $request->string('sort')->toString();
         match ($sort) {
             'name' => $query->orderBy('name'),
             'oldest' => $query->orderBy('id'),
+            'name_desc' => $query->orderByDesc('name'),
             default => $query->latest('id'),
         };
 
-        return response()->json($query->paginate(20));
+        return response()->json($query->paginate($this->perPage($request)));
     }
 
     public function show(int $product): JsonResponse
@@ -57,7 +84,7 @@ class ProductController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $this->rules($request);
-        $product = Product::query()->create($this->productAttributes($validated));
+        $product = Product::query()->create($this->withMeta($this->productAttributes($validated)));
         $this->syncRelations($product, $validated, $request);
 
         return response()->json(['data' => $this->payload($product->fresh(['brand', 'categories', 'variants', 'images']))], 201);
@@ -67,7 +94,7 @@ class ProductController extends Controller
     {
         $model = Product::withTrashed()->findOrFail($product);
         $validated = $this->rules($request, $model->id);
-        $model->fill($this->productAttributes($validated))->save();
+        $model->fill($this->withMeta($this->productAttributes($validated), $model))->save();
         $this->syncRelations($model, $validated, $request);
 
         return response()->json(['data' => $this->payload($model->fresh(['brand', 'categories', 'variants', 'images']))]);
@@ -180,6 +207,7 @@ class ProductController extends Controller
             'brand_id' => ['nullable', 'integer', 'exists:brands,id'],
             'category_ids' => ['nullable', 'array'],
             'category_ids.*' => ['integer', 'exists:categories,id'],
+            ...ProductExperience::rules(),
             'variants' => ['nullable', 'array'],
             'variants.*.id' => ['nullable', 'integer'],
             'variants.*.sku' => ['required', 'string', 'max:120'],
@@ -187,7 +215,7 @@ class ProductController extends Controller
             'variants.*.compare_at_price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.stock' => ['required', 'integer', 'min:0'],
             'variants.*.attributes' => ['nullable', 'array'],
-        ]);
+        ], [], ProductExperience::attributes());
     }
 
     /**
@@ -196,13 +224,39 @@ class ProductController extends Controller
      */
     protected function productAttributes(array $validated): array
     {
-        return [
+        $attributes = [
             'name' => $validated['name'],
             'slug' => ($validated['slug'] ?? '') ?: Str::slug($validated['name']),
             'description' => $validated['description'] ?? null,
             'status' => $validated['status'],
             'brand_id' => $validated['brand_id'] ?? null,
         ];
+
+        // 3D/AR and try-on settings live in the product's `meta` JSON, so no schema change is needed.
+        if (($experience = ProductExperience::pick($validated)) !== null) {
+            $attributes['__model'] = $experience;
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * Folds the 3D/AR model fields into the product's `meta` JSON, keeping any other meta keys intact.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    protected function withMeta(array $attributes, ?Product $existing = null): array
+    {
+        $model = $attributes['__model'] ?? null;
+        unset($attributes['__model']);
+
+        if ($model !== null) {
+            $meta = array_merge($existing !== null ? ($existing->meta ?? []) : [], $model);
+            $attributes['meta'] = array_filter($meta, fn ($value) => $value !== null && $value !== '');
+        }
+
+        return $attributes;
     }
 
     /**
@@ -262,6 +316,7 @@ class ProductController extends Controller
             'variants' => $product->variants,
             'images' => $product->images->map(fn (ProductImage $image) => $this->imagePayload($image))->values(),
             'image_url' => $product->image_url,
+            ...ProductExperience::fromMeta($product->meta),
             'deleted_at' => $product->deleted_at,
             'created_at' => $product->created_at,
             'updated_at' => $product->updated_at,

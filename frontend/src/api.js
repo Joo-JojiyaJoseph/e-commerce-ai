@@ -334,6 +334,18 @@ export function getReviews(slug) {
     return request(`/api/commerce/products/${slug}/reviews`);
 }
 
+export function getStorefrontConfig() {
+    return request('/api/commerce/storefront-config');
+}
+
+export function askAssistant(message, { signal } = {}) {
+    return request('/api/commerce/assistant', {
+        method: 'POST',
+        body: JSON.stringify({ message }),
+        signal,
+    });
+}
+
 export function createReview(slug, payload) {
     return request(`/api/commerce/products/${slug}/reviews`, {
         method: 'POST',
