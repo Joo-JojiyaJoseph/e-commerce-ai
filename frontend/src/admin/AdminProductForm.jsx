@@ -2,9 +2,11 @@ import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { adminGet, adminSend, upload } from '../api.js';
 import { Button, Input, PageHeader, Select, SectionCard, Textarea, Toggle } from '../components/common.jsx';
+import { Icon } from '../components/icons.jsx';
 import ModelViewer from '../components/ModelViewer.jsx';
 import { useToast } from '../toast.jsx';
 import CategoryPicker from './kit/CategoryPicker.jsx';
+import ModelBuilder from './ModelBuilder.jsx';
 import { useBrandOptions, useCategoryOptions } from './kit/lookups.js';
 
 const emptyVariant = { sku: '', price: '', compare_at_price: '', stock: 0, attributes: { color: '' } };
@@ -21,6 +23,7 @@ export default function AdminProductForm() {
     const { options: categories, loaded: categoriesLoaded } = useCategoryOptions();
     const [fieldErrors, setFieldErrors] = useState({});
     const previousForm = useRef(null);
+    const [builderOpen, setBuilderOpen] = useState(false);
     const [images, setImages] = useState([]);
     const [files, setFiles] = useState([]);
     const [form, setForm] = useState({
@@ -242,6 +245,27 @@ export default function AdminProductForm() {
                                 </div>
                                 {(fieldErrors.width_cm || fieldErrors.height_cm || fieldErrors.depth_cm) && <p role="alert" className="mt-1 text-xs text-danger">{fieldErrors.width_cm || fieldErrors.height_cm || fieldErrors.depth_cm}</p>}
                             </div>
+                        </div>
+                        <div className="mt-3">
+                            <button
+                                type="button"
+                                aria-expanded={builderOpen}
+                                onClick={() => setBuilderOpen((open) => !open)}
+                                className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-accent/30 bg-accent/10 px-4 py-2.5 text-sm font-semibold text-accent-dark transition hover:-translate-y-0.5 hover:bg-accent/15"
+                            >
+                                <Icon name="cube3d" className="h-4 w-4" /> {builderOpen ? 'Close the 3D model builder' : 'No 3D file? Build one here'}
+                            </button>
+                            {builderOpen && (
+                                <div className="mt-3">
+                                    <ModelBuilder
+                                        initialSize={{ w: Number(form.width_cm) || null, h: Number(form.height_cm) || null, d: Number(form.depth_cm) || null }}
+                                        onUse={({ url, placement, size }) => {
+                                            setForm((current) => ({ ...current, model_url: url, ar_placement: placement, width_cm: size.w, height_cm: size.h, depth_cm: size.d }));
+                                            setBuilderOpen(false);
+                                        }}
+                                    />
+                                </div>
+                            )}
                         </div>
                         <p className="mt-2 text-xs text-muted">When a placement is chosen, AR shows the item at <strong>true size</strong>, so export the .glb at real scale (1 unit = 1 metre). Sizes are shown to shoppers as a label.</p>
                         {/^(https:\/\/|\/)\S+$/i.test(form.model_url.trim()) && (

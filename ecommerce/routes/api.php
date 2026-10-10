@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\ModelController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentWebhookController;
@@ -50,6 +51,7 @@ Route::prefix('commerce')->group(function (): void {
     Route::get('payments/methods', [PaymentController::class, 'methods']);
     Route::post('assistant', AssistantController::class)->middleware('throttle:30,1');
     Route::get('storefront-config', [CatalogController::class, 'storefrontConfig']);
+    Route::get('models/{name}', [ModelController::class, 'show'])->where('name', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.glb');
     Route::post('payments/confirm', [PaymentController::class, 'confirm'])->middleware('throttle:auth');
     Route::post('payments/webhooks/stripe', [PaymentWebhookController::class, 'stripe']);
     Route::post('payments/webhooks/razorpay', [PaymentWebhookController::class, 'razorpay']);
@@ -89,6 +91,7 @@ Route::middleware('auth:sanctum')->prefix('notifications')->group(function (): v
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function (): void {
     Route::get('dashboard', [AdminDashboardController::class, 'show']);
     Route::get('integrations', [AdminIntegrationController::class, 'index']);
+    Route::post('models', [ModelController::class, 'store']);
 
     Route::get('products', [AdminProductController::class, 'index']);
     Route::post('products', [AdminProductController::class, 'store']);

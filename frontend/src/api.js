@@ -84,6 +84,14 @@ function rememberCart(payload) {
     }
 }
 
+/**
+ * Paths the API serves itself (uploaded 3D models) are stored as "/api/…", so they keep working if the site
+ * moves domain. When the storefront and API are on different origins, point them at the API.
+ */
+export function assetUrl(url) {
+    return typeof url === 'string' && url.startsWith('/api/') ? `${API_URL}${url}` : url;
+}
+
 async function request(path, options = {}) {
     const { signal, headers: extraHeaders, ...rest } = options;
     const headers = new Headers(extraHeaders);

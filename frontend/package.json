@@ -7,7 +7,8 @@
         "dev": "vite",
         "prebuild": "node scripts/copy-mediapipe.mjs",
         "build": "vite build",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "test:glb": "node scripts/test-glb.mjs"
     },
     "dependencies": {
         "@google/model-viewer": "^4.3.1",
@@ -22,6 +23,7 @@
     "devDependencies": {
         "@tailwindcss/vite": "^4.1.11",
         "@vitejs/plugin-react": "^5.0.0",
+        "gltf-validator": "^2.0.0-dev.3.10",
         "tailwindcss": "^4.0.7",
         "vite": "^8.0.0"
     }

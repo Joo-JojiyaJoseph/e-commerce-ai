@@ -1,15 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
+import { assetUrl } from '../api.js';
 import { Icon } from './icons.jsx';
 
 let loader;
+let libraryReady = false;
 
 /** Loads Google's free <model-viewer> web component once, and only when a model is shown. */
 function loadModelViewer() {
-    loader ??= import('@google/model-viewer');
+    loader ??= import('@google/model-viewer').then((module) => {
+        libraryReady = true;
+        return module;
+    });
     return loader;
 }
 
-const safe = (url) => (typeof url === 'string' && /^(https:\/\/|\/)[^\s]+$/i.test(url) ? url : null);
+// https links and same-site paths only (never javascript:/data:). `blob:` is allowed solely for the admin's
+// in-browser preview of a model that hasn't been saved yet.
+const safe = (url, allowBlob = false) => {
+    if (typeof url !== 'string') return null;
+    if (allowBlob && /^blob:[^\s]+$/i.test(url)) return url;
+    return /^(https:\/\/|\/)[^\s]+$/i.test(url) ? assetUrl(url) : null;
+};
 
 /** "Real size: 90 × 180 × 35 cm (W × H × D)", skipping any dimension that isn't set. */
 export function sizeLabel({ width_cm: w, height_cm: h, depth_cm: d } = {}) {
@@ -29,13 +40,13 @@ export function sizeLabel({ width_cm: w, height_cm: h, depth_cm: d } = {}) {
  *
  * Only https:// and same-site paths are accepted, so a bad URL can never become a script.
  */
-export default function ModelViewer({ src, iosSrc, poster, alt, className = '', ar = true, placement, dimensions, qrUrl }) {
+export default function ModelViewer({ src, iosSrc, poster, alt, className = '', ar = true, placement, dimensions, qrUrl, allowBlob = false }) {
     const viewerRef = useRef(null);
-    const [ready, setReady] = useState(false);
+    const [ready, setReady] = useState(libraryReady);
     const [failed, setFailed] = useState(false);
     const [canAR, setCanAR] = useState(null);
     const [qr, setQr] = useState(null);
-    const model = safe(src);
+    const model = safe(src, allowBlob);
     // People who ask their OS for reduced motion shouldn't get a model that spins on its own.
     const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const touchDevice = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
@@ -44,9 +55,9 @@ export default function ModelViewer({ src, iosSrc, poster, alt, className = '', 
     useEffect(() => {
         if (!model) return undefined;
         let cancelled = false;
-        setReady(false);
+        // once the library is in, a changed model swaps inside the same viewer (no spinner flash while editing)
+        if (!libraryReady) setReady(false);
         setFailed(false);
-        setCanAR(null);
         loadModelViewer().then(() => !cancelled && setReady(true)).catch(() => !cancelled && setFailed(true));
         return () => { cancelled = true; };
     }, [model]);
